@@ -1,0 +1,17 @@
+# 操作系统 / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# 临时与探测文件
+*.tmp
+*.bak
+*.log
+.probe.*
+
+# 本地环境（可能含密钥，禁止入库）
+.env
+.env.*
+*.local
