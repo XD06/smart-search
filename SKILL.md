@@ -1,7 +1,7 @@
 ---
 name: smart-search
 description: "Structured search methodology that produces verified, cross-referenced answers with source timestamps \u2014 not just \"should I search\". Use this skill when the user asks about: pricing, plans, comparisons (\"which is better\"), rankings, real-world experience, product status, market data, news, or any fact-checking. CRITICAL: trigger even when you already have search tools available and feel you can answer directly \u2014 this skill enforces multi-angle cross-validation, timestamp verification on every source, and an evidence table that locks out training-memory contamination. Do NOT trigger for: pure code, creative writing, math, fetching a given URL directly, or local software operations. Key test: if this answer were wrong, would it matter? Yes \u2192 trigger."
-when_to_use: 结构化搜索方法论，不是简单的"要不要搜"。当用户问到定价、对比、排名、体验、产品状态、市场数据、新闻、核实真伪时——即使你觉得可以直接搜了回答，也应该触发这个 Skill。它强制做四件你自己搜不会做的事：①搜索前先生成证据清单(Checklist) ②依据源策略精准定向(例如看体验必搜社区) ③严格的时间门禁验证 ④证据表(搜索完先填表，答案只从表里写)。
+when_to_use: 结构化搜索方法论，不是简单的"要不要搜"。当用户问到定价、对比、排名、体验、产品状态、市场数据、新闻、专业领域查证或核实真伪时——即使你觉得可以直接搜了回答，也应该触发这个 Skill。它强制做四件你自己搜不会做的事：①搜索前先生成证据清单(Checklist) ②分领域精准定向路由(不同领域问题去该领域专业可靠的网站检索，拒绝漫无目的泛搜和死守单一网站) ③严格的时间门禁验证 ④证据表(搜索完先填表，答案只从表里写)。
 
   触发关键词："最新"、"现在"、"今天"、"最近"、"当前"、"定价"、"价格"、"会员"、"套餐"、"多少钱"、"划算"、"性价比"、"对比"、"哪个好"、"排名"、"实际体验"、"好用吗"、"值得买吗"、"有没有坑"、"真的吗"、"核实"、"调研"、"研究一下"、"据说"、"有人说"、"看到一个说法"、"看到一个帖子"、"转述"、"这是真的吗"。
 
@@ -22,8 +22,11 @@ when_to_use: 结构化搜索方法论，不是简单的"要不要搜"。当用�
 
 ## 设计理念 (Philosophy)
 
-Smart Search 不是一套僵化的"先搜A再搜B"的说明书，而是一个**问题驱动的搜索操作系统**。
-在开始搜索之前，**永远不要先想"搜索什么关键词"，而是先思考"要回答这个问题，需要哪些具体的证据 (Evidence)？每一种证据最可能存在于哪里？"**
+Smart Search 不是一套僵化的"先搜A再搜B"的说明书，也不是漫无目的的全网泛搜，而是一个**问题驱动、领域定向的搜索操作系统**。
+在开始搜索之前，**永远不要先拿关键词去全网盲搜，而是先思考三个问题：**
+1. **这个问题属于哪个专业领域 (Domain)？**（不同领域有截然不同的权威阵地，绝不能所有问题都去同一个网站搜）
+2. **要回答它，需要哪些具体的证据 (Evidence)？**（一手事实、客观实测数据，还是行家真实体验？）
+3. **在这个领域里，每一种证据最可靠、最专业的网站分别是哪几个？**（已知领域查表直达，未知领域动态探源）
 
 这个 Skill 被拆分为三个层级执行：
 1. **Level 1: Core Loop (核心工作流)** - 你处理每一次查询必须经过的决策树。
@@ -70,29 +73,45 @@ Smart Search 不是一套僵化的"先搜A再搜B"的说明书，而是一个**�
 
 ---
 
-### 阶段 1：Information Planning (信息规划)
-**目标：明确要搜什么证据，以及去哪搜。**
-- **动作**：拆解用户问题，在思考过程中生成一个 `Evidence Checklist`。
-- **示例**：用户问 "OpenRouter 和 Poe 哪个更值得买？"
-- **内部生成的 Checklist**：
-  - `[ ]` 订阅定价对比 → **目标源：各自官网 Pricing**
-  - `[ ]` 支持的模型数量 → **目标源：官方 Docs/Model List**
-  - `[ ]` 真实稳定性与并发限制 → **目标源：社区 (GitHub Issue / Reddit)**
-  - `[ ]` 充值/API 使用体验 → **目标源：社区 (V2EX / HN)**
+### 阶段 1：Information Planning & Domain Routing (信息规划与领域定向)
+**目标：明确要搜什么证据，并根据具体问题领域锁定专业可靠的网站（拒绝泛搜与单一网站依赖）。**
+- **动作**：按以下三步生成包含具体目标站点的 `Evidence Checklist`：
+  1. **判定垂直领域 (Domain)**：识别问题归属（如 AI与开发、硬件数码、学术科研、医疗健康、金融商业、法律合规、汽车消费等，跨领域问题则拆分对应）。
+  2. **划分证据层级 (Tier 1~3)**：
+     - **Tier 1（一手基准/法定源）**：查事实存否、官方参数、法定披露、现行法规。
+     - **Tier 2（独立评测/专业数据库）**：查量化实测、客观横评、行业基准数据。
+     - **Tier 3（垂直硬核社区）**：查真实体验、隐形坑、长期故障率。
+  3. **路由到具体专业网站 (Site Routing)**：查阅 `Level 2: 2.1 双轴信源路由策略` 或 `references/domain-sources.md`；若遇未收录的细分领域，启用「动态探源法」判断该领域的权威站。**每个维度必须备选 2 个以上可靠源，不绑死单一网站。**
+- **跨领域定向 Checklist 示例**：
+  - *示例 A（AI 工具对比："OpenRouter 和 Poe 哪个更值得买？"）*
+    - `[ ]` 订阅定价与计费口径 → **Tier 1：各自官网 Pricing / Docs**
+    - `[ ]` API 延迟与吞吐实测 → **Tier 2：`artificialanalysis.ai` / OpenRouter Rankings**
+    - `[ ]` 真实稳定性与风控槽点 → **Tier 3：`linux.do` / `v2ex.com` / `reddit.com/r/LocalLLaMA`**
+  - *示例 B（硬件选购："某款 4K 显示器值得买吗？有没有通病？"）*
+    - `[ ]` 面板色准/响应时间/频闪量化实测 → **Tier 2：`rtings.com` / `notebookcheck.net`**
+    - `[ ]` 国内长期使用坏点率与售后口碑 → **Tier 3：`chiphell.com` / `smzdm.com`（评论区追评）**
+  - *示例 C（医疗/金融/其他专业问题）*
+    - 医疗用药 → 定向 `msdmanuals.cn` / `mayoclinic.org` / `nmpa.gov.cn` / `examine.com`（严禁泛搜养生自媒体）
+    - 上市公司数据 → 定向 `sec.gov/edgar` / `cninfo.com.cn` / `hkexnews.hk`（严禁采信无出处二手截图）
 
-### 阶段 2：Evidence Collection (证据收集)
-**目标：按规划定向收集数据，不盲目乱搜。**
-- **动作**：根据阶段 1 的清单，依据 `Level 2: Source Policy` 开始定向搜索。
+### 阶段 2：Evidence Collection (定向证据收集)
+**目标：直达专业可靠网站高效检索，不漫无目的泛搜，不死磕单一站点。**
+- **动作**：根据阶段 1 的清单，按照 `Level 2: Source Policy` 执行定向检索。
 
 **执行要领：**
-- **泛搜 + 定向搜结合**：泛搜了解全貌、发现优质来源；定向搜（`site:` 语法）在已知权威域名下精准查找，绕开 SEO 垃圾。两者互补，不要二选一。
-- **换视角不换关键词**：不要用三个不同关键词搜同一类信息源，而是用同一个问题去不同类型的信息源获取不同视角的回答。
-- **并行获取**：找到多个验证链接后，尽量并行 fetch，不要串行等待。
-- **搜索受阻时立即换路**：
-  - 被 Cloudflare/反爬屏蔽 → 换搜索引擎或换搜索词
-  - 搜索结果全是 SEO 垃圾 → 改用 `site:` 定向搜可信域名
-  - 完全搜不到 → 尝试英文搜索（很多话题英文资料更丰富）
-  - 一种 fetch 工具拿不到内容 → 换另一种工具，不要反复重试同一种方式
+- **定向优先，泛搜兜底（Targeted-First, Broad-Fallback）**：
+  - 对于已知领域的专业问题，**第一优先级是使用 `site:权威域名` 或「关键词 + 专业平台名」定向检索**，直接穿透全网 SEO 内容农场、营销软文和二手搬运站。
+  - 仅当定向搜不到、需要发现新实体名称、或为未知领域寻找权威站域名时，才辅以泛搜。
+- **多站轮转，拒绝单点依赖**：
+  - 绝不固定死守某一个网站。当首选专业网站无此条目、信息不全或视角单一，立即切换到同领域的备选专业网站（例如查硬件参数 `rtings.com` 无收录 → 切 `techpowerup.com` / `chiphell.com`；查开发者口碑 `v2ex.com` 样本少 → 切 `linux.do` / `news.ycombinator.com`）。
+- **陌生领域「两步跳动态探源 (Two-Hop Routing)」**：
+  - 面对不在预置表中的冷门/细分领域（如特种行业、冷门装备、某国特定政策），**先探源、再深挖**：
+    - **Hop 1（探源）**：先判断或用 1 次搜索查明“该领域的官方监管机构 / 行业核心数据库 / 最硬核的垂直社区是什么网站？”
+    - **Hop 2（深挖）**：锁定该领域的专业网站域名后，再进去定向检索具体事实。
+- **换视角不换关键词**：不要用三个近义词搜同一类营销号，而是用同一个问题去 **Tier 1（官方）+ Tier 2（专业测评库）+ Tier 3（垂直社区）** 获取不同视角的证据。
+- **并行获取与受阻换路**：
+  - 找到多个独立专业源链接后，尽量并行 fetch。
+  - 某站点被 Cloudflare/反爬拦截 → 立即切换同领域的备选专业站，或改用搜索引擎摘要/英文检索，不要在同一工具和同一 URL 上反复死磕。
 
 ### 阶段 3：Evidence Validation (证据时效验证)
 **目标：剔除旧数据和软文。**
@@ -121,21 +140,43 @@ Smart Search 不是一套僵化的"先搜A再搜B"的说明书，而是一个**�
 
 ## Level 2: Policy (执行策略)
 
-### 2.1 Source Policy (信息源匹配策略)
+### 2.1 Source Policy (双轴信息源匹配与分领域路由策略)
 
-这是你制定搜索 Checklist 时**必须遵循**的匹配规则。不要盲目去所有地方搜，**每一种事实，都去最擅长产生这种事实的地方**：
+制定搜索 Checklist 时，必须同时按 **「证据性质（横轴）」×「垂直领域（纵轴）」** 进行二维定位。**不同的问题去不同的专业网站，严禁拿所有问题去同一个网站搜，也严禁在全网内容农场里漫无目的地泛搜。**
 
-| 你需要的信息类型 | 最可靠的信息源 (首选) | 次选 (独立验证) | 理由说明 |
-|---------------|--------------------|--------------|---------|
-| **定价 / 套餐 / 额度** | **官网 Pricing 页** | 官方文档 | 价格变动最快，必须看第一手 |
-| **API 参数 / 官方特性** | **官方 Docs** | GitHub 示例 | 权威定义只有官方能给 |
-| **Bug / 稳定性 / 死循环** | **GitHub Issue** | Reddit | 官方PR不会写这些，必须看真实反馈 |
-| **真实体验 / 避坑 / 槽点** | **社区 (Reddit/V2EX/Linux DO)** | X (Twitter) | **这是真正的使用者体验，评判"好不好用"的核心** |
-| **企业采购 / 架构选型** | **Hacker News (HN)** | 技术博客 | 聚集大量架构师和 CTO |
-| **商业数据 / 市值 / 市场** | **财报 / 交易所 / 研报** | 权威财经媒体 | 数据滞后性最致命，直接找数据源 |
-| **当前实时榜单 (HF/Star)**| **直接访问平台页面** | - | 平台自带实时排序，不用搜文章 |
+#### 2.1.1 第一轴：按证据性质分层 (Evidence Tiers)
 
-**关键规则**：如果用户问"产品好不好用"、"有没有坑"、"哪个更适合"，你的 Checklist 必须强制包含一条指向 **社区论坛** 的搜索任务。
+| 你需要的信息性质 | 证据层级与首选源类型 | 次选 (独立交叉验证) | 核心作用 |
+|---------------|--------------------|------------------|---------|
+| **定价 / 额度 / 条款 / 法规原文** | **Tier 1：官网 Pricing / 法定机构库** | 官方 Docs / 公告原文 | 规则与价格变动极快，只认第一手基准 |
+| **API 参数 / 硬件规格 / 药品说明书** | **Tier 1：官方 Docs / Spec / 药监局** | 权威行业标准库 | 权威定义只有官方或监管机构能给 |
+| **客观性能 / 横向评测 / 行业统计** | **Tier 2：独立评测实验室 / 垂直数据库** | 学术论文 / 权威行研 | 用量化实测数据戳破官方宣传水分 |
+| **Bug / 故障通病 / 安全漏洞** | **Tier 2/3：GitHub Issue / CVE库 / 投诉库** | 垂直技术社区 | 官方不会主动宣传缺陷，必查故障汇集地 |
+| **真实体验 / 避坑槽点 / 长期口碑** | **Tier 3：该领域的垂直硬核社区** | 真实买家追评/差评区 | **评判"好不好用/值不值"的核心依据** |
+
+#### 2.1.2 第二轴：按垂直领域定向路由表 (Domain Authority Matrix)
+
+面对具体领域的问题，直接从下表选取对应领域的 **Tier 1 / Tier 2 / Tier 3** 专业网站组合检索（完整域名清单与 `site:` 语法示例见 `references/domain-sources.md`）：
+
+| 问题所属领域 | Tier 1：一手基准 / 法定权威 | Tier 2：独立评测 / 专业数据库 | Tier 3：垂直硬核社区 / 真实口碑 | 🚫 严禁采信的污染源 |
+|------------|--------------------------|----------------------------|------------------------------|-------------------|
+| **1. AI 与大模型** | 厂商官网 Pricing/Docs、`huggingface.co`、`arxiv.org` | `artificialanalysis.ai` (测速/价格)、`lmarena.ai`、`livebench.ai`、`swebench.com` | `linux.do`、`reddit.com/r/LocalLLaMA`、`news.ycombinator.com`、`v2ex.com` | 带返佣链接的测评软文、无出处的跑分自媒体 |
+| **2. 软件工程与安全** | 官方 Docs、MDN、`npmjs.com` / `pypi.org` / `crates.io`、IETF RFC | `nvd.nist.gov` (CVE)、`github.com/advisories`、`downdetector.com` | GitHub Issues/Discussions、`stackoverflow.com`、HN、`lobste.rs` | 机翻采集站、CSDN 抄袭水文 |
+| **3. 硬件数码与家电** | 厂商 Spec 页 (Intel ARK等)、`fccid.io` | `rtings.com` (显示器/耳机/家电量化)、`notebookcheck.net`、`techpowerup.com`、`socpk.com` (极客湾)、`chongdiantou.com`、`audiosciencereview.com` | `chiphell.com`、`reddit.com/r/Monitors` (及各硬件子版)、`smzdm.com` (看评论区解毒) | 纯罗列参数带货的“十大排行”导购站 |
+| **4. 学术科研与科学** | `scholar.google.com`、`arxiv.org`、`pubmed.ncbi.nlm.nih.gov`、IEEE/ACM、`cnki.net` | `openreview.net` (顶会审稿意见与打分)、`paperswithcode.com`、`ourworldindata.org` | `pubpeer.com` (论文质疑/勘误)、`retractionwatch.com`、`muchong.com` (小木虫) | “震惊！科学家发现…”类的二手夸张科普号 |
+| **5. 医疗健康与营养** | 国家药监局 `nmpa.gov.cn`、`fda.gov`、`who.int`、`cdc.gov`、`medlineplus.gov` | 默沙东诊疗手册 `msdmanuals.cn`、`mayoclinic.org`、`uptodate.com`、`examine.com` (补剂循证天花板)、`drugs.com` | `dxy.cn` (丁香园)、`medlive.cn` (医脉通)、`reddit.com/r/AskDocs` | 养生营销号、百家号医疗广告、带货保健品软文 |
+| **6. 金融宏观与商业** | 美股 `sec.gov/edgar`、A股 `cninfo.com.cn` (巨潮)、港股 `hkexnews.hk`、统计局 `stats.gov.cn`、美联储 `fred.stlouisfed.org` | `finance.yahoo.com`、`tradingview.com`、`eastmoney.com`、`crunchbase.com`、`itjuzi.com`、财新/路透/彭博 | `jisilu.cn` (集思录-套利/量化数据)、`xueqiu.com` (看财报长文，滤情绪)、`seekingalpha.com` | 荐股群软文、混淆GMV/营收口径的公关通稿 |
+| **7. B2B软件与防坑** | 官网 SLA / Terms / Trust Center | `g2.com`、`capterra.com`、`gartner.com/reviews`、`alternativeto.net` (查平替)、`sspai.com` | `trustpilot.com` (国际防骗必查)、`tousu.sina.com.cn` (黑猫投诉)、`gsxt.gov.cn` (企业信用) | 竞价排名山寨官网、自卖自夸的“Top 10软件”软文 |
+| **8. 法律政策与标准** | 国家法律法规库 `flk.npc.gov.cn`、`gov.cn`、裁判文书网、国标公开系统 `openstd.samr.gov.cn`、`law.cornell.edu`、`eur-lex.europa.eu` | `pkulaw.com` (北大法宝)、`patents.google.com`、知识产权局 `cnipa.gov.cn` | 垂直法律实务论坛、律所专业实务文章 | 引用已废止旧法的营销号、非 `.gov` 冒充官网的中介站 |
+| **9. 游戏影视与图书** | `steamdb.info` (在线人数/史低)、`store.steampowered.com`、猫眼专业版 / Box Office Mojo | `metacritic.com`、`opencritic.com`、`pcgamingwiki.com` (PC优化/Bug修复)、`howlongtobeat.com`、`imdb.com` | `douban.com` (图书译本/影评)、`bgm.tv` (Bangumi)、`nga.cn` (数值考据)、`goodreads.com` | AI批量生成的假攻略/剧情解析采集站 |
+| **10. 汽车出行与生活** | 领事馆/移民局官网、中保研 `ciasi.org.cn`、`nhtsa.gov` (碰撞与召回) | `12365auto.com` (车质网-查车型故障投诉通病)、`dongchedi.com`、`consumerreports.org`、`aerolopa.com` | `flyert.com` (飞客茶馆-常旅客)、`flyertalk.com`、`tripadvisor.com`、`qyer.com` | 纯滤镜种草帖、隐瞒商业合作的探店/车评软文 |
+
+#### 2.1.3 动态判断法则：遇到不在表中的细分/冷门领域怎么办？
+
+当用户提问落在上述 10 大领域之外（如：特种材料、跨境清关、冷门乐器、宠物毒性、某地房产政策等），**严禁退回漫无目的的全网泛搜**，必须根据具体情况执行「领域三问」动态路由：
+1. **谁是监管者/标准制定者（Tier 1）？** → 先找该行业的国家部委、行业协会、国际标准组织官网。
+2. **谁有垂直数据库（Tier 2）？** → 思考或用 1 次搜索探明“该行业从业者查行情、查参数、查排名的专业门户网站是谁？”
+3. **谁是真金白银的实操者（Tier 3）？** → 找到该垂类老手聚集的专门论坛或特定 Subreddit，绝不看大众泛娱乐平台的二手拼凑文。
 
 ### 2.2 Time Threshold Policy (时间门禁策略)
 
@@ -233,13 +274,10 @@ Smart Search 不是一套僵化的"先搜A再搜B"的说明书，而是一个**�
 
 *(这部分是补充信息，需要时再调取)*
 
-### 3.1 社区论坛定位指南
-在进行社区定向搜索（`site:xxx.com`）时：
-- `site:reddit.com/r/OpenAI` (大众用户体验)
-- `site:news.ycombinator.com` (硅谷开发者、创业者深度讨论)
-- `site:linux.do` (国内硬核折腾党、API代理、性价比)
-- `site:v2ex.com` (国内程序员体验、开发工具反馈)
-- 更多请参阅 `references/community-forums.md`。
+### 3.1 全领域专业网站与垂直社区定位指南
+在进行定向搜索（`site:xxx.com`）时，**按问题领域选择最匹配的权威网站与垂直社区，不固定死守单一网站**：
+- **全领域权威网站地图（Tier 1 一手源 + Tier 2 专业评测库 + Tier 3 垂直社区 + 动态探源法）**：详见 `references/domain-sources.md`。
+- **跨行业垂直社区与口碑验证速查（科技/硬件/金融/学术/医疗/汽车/文娱/防坑）**：详见 `references/community-forums.md`。
 
 ### 3.2 输出骨架参考
 根据问题类型选择合适的输出模板，详见 `references/output-templates.md`。
@@ -252,7 +290,7 @@ B 型输入的拆解步骤、类型标注、常见信号速查和标准示例（
 
 ## 你的执行准则 (Your Core Directives)
 1. 收到输入先分型：A 型提问走五阶段；B 型信息投喂先走阶段 0 拆解声称——**字面声称进主线程立即核查，暗含推测进副线程暂存**。
-2. 依据 Checklist 和 Source Policy 执行搜索，泛搜+定向搜结合，受阻立即换路；核查转述说法必须绕回一手信源，禁止回声室式验证。
-3. 严格执行时间门禁 + 软文甄别，构建证据表，矛盾如实标注。
+2. **先定领域、再选网站、定向检索**：根据问题所属的专业领域和证据层级（Tier 1 一手源 / Tier 2 专业评测与数据库 / Tier 3 垂直社区），从预调研矩阵或通过「两步跳动态探源」锁定 2~3 个专业可靠网站定向检索；拒绝漫无目的的全网泛搜，拒绝所有问题死磕单一网站；核查转述说法必须绕回一手信源，禁止回声室式验证。
+3. 严格执行时间门禁 + 软文与污染源甄别，构建证据表，矛盾如实标注。
 4. 基于证据表输出，每个关键结论附带 `[来源](URL)` 和时间。禁止元叙述废话。
 5. 输出末尾附「暂存线索」：副线程假设每条一行+触发条件，用户后续提问命中即升级为主线程深挖（先行推测，后行补充）。
